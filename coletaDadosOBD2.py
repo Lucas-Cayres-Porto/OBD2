@@ -4,6 +4,8 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import sqlalchemy as sqla
+from sqlalchemy import text
+import re
 
 def conectar():
     conn = None
@@ -14,15 +16,62 @@ def conectar():
     except sqla.Error as e:
         print("Erro na conexão")
     finally:
-        return conn
+        return conn.connect()
     
 def desconectar(conn):
     if conn != None:
-        conn.dispose()
+        conn.close()
+
+def efetuarLogin():
+
+    while True:
+        while True:
+            email=input("Digite o email do motorista: ")
+            if re.match(r"^[A-Za-z0-9\.-]+@[a-zA-Z]+\.[A-Za-z\.]+$",email):
+                break
+            else:
+                print("Formato de email ínvalido !")
+        senhaDigitada=input("Digite a sua senha: ")
+
+        conexaoBD = conectar()
+
+        senhaEsperada = pd.read_sql_query(f"SELECT m.id,m.senha FROM motorista m WHERE m.email='{email}'",conexaoBD)
+
+        desconectar(conexaoBD)
+
+        if not senhaEsperada.empty:
+            if senhaDigitada == senhaEsperada.loc[0,"senha"]:
+                break
+            else:
+                while True:
+                    print("Senha incorreta, digite novamente !")
+                    senhaDigitada=input("Digite a sua senha: ")
+                    if senhaDigitada == senhaEsperada.loc[0,"senha"]:
+                        break
+                break    
+        else:
+            print("Conta não cadastrada !")
+
+    print("Login realizado com sucesso !")
+    return senhaEsperada.loc[0,"id"]        
+
+def escolherVeículo(idMotorista):
+    conexaoBD = conectar()
+
+    caminhoes = pd.read_sql_query(f"select c.id ,c.placa, c.modelo from caminhao_motorista cm join caminhao c on c.id = cm.id_caminhao where cm.id_motorista = {idMotorista}",conexaoBD)
+
+    for i in range(caminhoes.shape[0]):
+        print(f"")
     
 
 
+
+
+
 def main():
+  
+    idMotorista = efetuarLogin()
+
     conexaoOBD= obd.OBD()
 
     dt = pd.DataFrame([{
@@ -36,10 +85,11 @@ def main():
         'sensores_oxigenio':-1 if conexaoOBD.query(obd.commands.FUEL_LEVEL).is_null() else conexaoOBD.query(obd.commands.FUEL_LEVEL).value.magnitude,
         'qtd_combustivel':-1 if conexaoOBD.query(obd.commands.O2_B1S1).is_null() else conexaoOBD.query(obd.commands.O2_B1S1).value.magnitude,
         'temp_arrefecimento':-1 if conexaoOBD.query(obd.commands.COOLANT_TEMP).is_null() else conexaoOBD.query(obd.commands.COOLANT_TEMP).value.magnitude,
-        'pressao_coletor_admissao':-1 if conexaoOBD.query(obd.commands.INTAKE_PRESSURE).is_null() else conexaoOBD.query(obd.commands.INTAKE_PRESSURE).value.magnitude
+        'pressao_coletor_admissao':-1 if conexaoOBD.query(obd.commands.INTAKE_PRESSURE).is_null() else conexaoOBD.query(obd.commands.INTAKE_PRESSURE).value.magnitude,
+        'id_caminhao':1
     }])
-    conexaoDB = conectar()
 
+    conexaoDB = conectar()
     dt.to_sql("informacoes",conexaoDB,if_exists='append',index=False)
 
     desconectar(conexaoDB)
