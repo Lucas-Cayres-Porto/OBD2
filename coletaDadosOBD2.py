@@ -5,14 +5,35 @@ import os
 from dotenv import load_dotenv
 import sqlalchemy as sqla
 import re
+import psycopg2 as psy
+import warnings
+warnings.filterwarnings("ignore")
 
 
 def conectar():
+
+    conn = None
+    try:
+        load_dotenv()
+        conn = psy.connect(
+            # passando os parâmetros necessários pegos do .env
+            host = os.getenv('HOSTTEST'),
+            database = os.getenv('DATABASETESt'),
+            user = os.getenv('USER'),
+            password = os.getenv('PASSWORDTEST'),
+            port = int(os.getenv('PORTTEST')),
+        )
+    except psy.Error as e:
+        print("Erro !")
+    finally:
+        return conn
+
+def conectarInsert():
     conn = None
     load_dotenv()
 
     try:
-        conn = sqla.create_engine(f"postgresql+psycopg2://{os.getenv('USER')}:{os.getenv('PASSWORDTESTE')}@{os.getenv('HOSTTEST')}:{os.getenv('PORTTEST')}/{os.getenv('DATABASETESTE')}")
+        conn = sqla.create_engine(f"postgresql+psycopg2://{os.getenv('USER')}:{os.getenv('PASSWORDTEST')}@{os.getenv('HOSTTEST')}:{os.getenv('PORTTEST')}/{os.getenv('DATABASETEST')}")
     except sqla.Error as e:
         print("Erro na conexão")
     finally:
@@ -35,27 +56,30 @@ def efetuarLogin():
                 print("Formato de email ínvalido !")
         senhaDigitada=input("Digite a sua senha: ")
 
-        conexaoBD = conectar()
+        conexaoBD = conectar().cursor()
 
-        senhaEsperada = pd.read_sql_query(f"SELECT m.id,m.senha FROM motorista m WHERE m.email='{email}'",conexaoBD)
+        conexaoBD.execute(f"SELECT m.id,m.senha FROM motorista m WHERE m.email=%s",(email,))
+
+        senhaEsperada= conexaoBD.fetchone()
+
 
         desconectar(conexaoBD)
 
-        if not senhaEsperada.empty:
-            if senhaDigitada == senhaEsperada.loc[0,"senha"]:
+        if senhaEsperada:
+            if senhaDigitada == senhaEsperada[1]:
                 break
             else:
                 while True:
                     print("Senha incorreta, digite novamente !")
                     senhaDigitada=input("Digite a sua senha: ")
-                    if senhaDigitada == senhaEsperada.loc[0,"senha"]:
+                    if senhaDigitada == senhaEsperada[1]:
                         break
                 break    
         else:
             print("Conta não cadastrada !")
 
     print("Login realizado com sucesso !")
-    return senhaEsperada.loc[0,"id"] 
+    return senhaEsperada[0]
        
 
 def escolherVeiculo(idMotorista):
@@ -101,7 +125,7 @@ def main():
         'id_caminhao':idCaminhao
     }])
 
-    conexaoDB = conectar()
+    conexaoDB = conectarInsert()
     dt.to_sql("informacoes",conexaoDB,if_exists='append',index=False)
 
     desconectar(conexaoDB)
