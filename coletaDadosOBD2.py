@@ -4,8 +4,8 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import sqlalchemy as sqla
-from sqlalchemy import text
 import re
+
 
 def conectar():
     conn = None
@@ -18,9 +18,11 @@ def conectar():
     finally:
         return conn.connect()
     
+    
 def desconectar(conn):
     if conn != None:
         conn.close()
+
 
 def efetuarLogin():
 
@@ -53,24 +55,34 @@ def efetuarLogin():
             print("Conta não cadastrada !")
 
     print("Login realizado com sucesso !")
-    return senhaEsperada.loc[0,"id"]        
+    return senhaEsperada.loc[0,"id"] 
+       
 
-def escolherVeículo(idMotorista):
+def escolherVeiculo(idMotorista):
     conexaoBD = conectar()
 
     caminhoes = pd.read_sql_query(f"select c.id ,c.placa, c.modelo from caminhao_motorista cm join caminhao c on c.id = cm.id_caminhao where cm.id_motorista = {idMotorista}",conexaoBD)
 
+    desconectar(conexaoBD)
+
     for i in range(caminhoes.shape[0]):
-        print(f"")
+        print(f"{i+1} - Placa: {caminhoes.loc[i,'placa']}, Modelo: {caminhoes.loc[i,'modelo']}")  
+
+    while True:
+        escolha =int(input("Escolha um dos veículos acima: "))
+        if escolha < 1 or escolha > caminhoes.shape[0]:
+            print(f"Escolha um número entre 1 e {caminhoes.shape[0]}")
+        else: 
+            break
     
-
-
-
+    return caminhoes.loc[escolha-1,"id"]
 
 
 def main():
   
     idMotorista = efetuarLogin()
+
+    idCaminhao = escolherVeiculo(idMotorista)
 
     conexaoOBD= obd.OBD()
 
@@ -86,7 +98,7 @@ def main():
         'qtd_combustivel':-1 if conexaoOBD.query(obd.commands.O2_B1S1).is_null() else conexaoOBD.query(obd.commands.O2_B1S1).value.magnitude,
         'temp_arrefecimento':-1 if conexaoOBD.query(obd.commands.COOLANT_TEMP).is_null() else conexaoOBD.query(obd.commands.COOLANT_TEMP).value.magnitude,
         'pressao_coletor_admissao':-1 if conexaoOBD.query(obd.commands.INTAKE_PRESSURE).is_null() else conexaoOBD.query(obd.commands.INTAKE_PRESSURE).value.magnitude,
-        'id_caminhao':1
+        'id_caminhao':idCaminhao
     }])
 
     conexaoDB = conectar()
