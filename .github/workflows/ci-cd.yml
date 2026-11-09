@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Telemetria OBD2
+name: CI/CD Pipeline - Telemetria OBD2 FastAPI
 
 on:
   push:
@@ -8,32 +8,34 @@ on:
 
 jobs:
   ci:
-    name: Continuous Integration (Testes e Qualidade)
+    name: Continuous Integration (Qualidade e Testes)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      - name: Configurar Python
+      - name: Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Instalar dependências
+      - name: Instalar dependências da aplicação
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Verificação de sintaxe e linting com Flake8
+      - name: Análise estática e linting com Flake8
         run: |
-          # Interrompe o build se houver erros de sintaxe ou variáveis indefinidas
+          # Interrompe o workflow se houver erros de sintaxe ou variáveis indefinidas
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Avisos gerais de estilo (não bloqueantes)
+          flake8 . --count --exit-zero --max-complexity=15 --max-line-length=130 --statistics
 
-      - name: Executar testes automatizados
+      - name: Executar testes automatizados com Pytest
         run: |
-          pytest -v
+          pytest -v --tb=short
 
   cd:
     name: Continuous Deployment (Build e Publicação da Imagem Docker)
@@ -48,6 +50,15 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Formatar nome da imagem para minúsculas
+        id: prep
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=ghcr.io/${REPO_LOWER}" >> $GITHUB_OUTPUT
+
       - name: Autenticar no GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
         with:
@@ -55,11 +66,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build e Push da Imagem Docker
+      - name: Build e Push da Imagem Docker para o GHCR
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ${{ steps.prep.outputs.IMAGE_NAME }}:latest
+            ${{ steps.prep.outputs.IMAGE_NAME }}:${{ github.sha }}
