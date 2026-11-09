@@ -1,8 +1,6 @@
 # 🚛 OBD2 - Telemetria Veicular & API REST
 
-[![CI/CD Pipeline](https://github.com/Lucas-Cayres-Porto/OBD2/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Lucas-Cayres-Porto/OBD2/actions/workflows/ci-cd.yml)
-
-Sistema moderno de telemetria automotiva via protocolo OBD2 com ingestão de dados em tempo real, desenvolvido em Python e **FastAPI**, com pipeline completa de **CI/CD no GitHub Actions** e implantação contínua em contêineres Docker no **GitHub Container Registry (GHCR)**.
+Sistema moderno de telemetria automotiva via protocolo OBD2 com ingestão de dados em tempo real, desenvolvido em Python e **FastAPI**.
 
 ---
 
@@ -34,42 +32,12 @@ OBD2/
 │   ├── test_auth.py       # Testes de validação de login e e-mail
 │   ├── test_telemetria.py # Testes de payload de telemetria
 │   └── test_cores.py      # Testes do utilitário de cores ANSI
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml      # Pipeline CI (pytest/flake8) e CD (Docker/GHCR)
-├── Dockerfile             # Imagem de contêiner de produção
+├── Dockerfile             # Imagem de contêiner da aplicação
 ├── .dockerignore
 ├── requirements.txt       # Dependências da aplicação
 ├── coletaDadosOBD2.py     # Script legado de leitura OBD2
 └── cores.py               # Utilitário de formatação de console
 ```
-
----
-
-## ⚙️ Pipeline de CI/CD (GitHub Actions)
-
-A pipeline é acionada automaticamente a cada `push` ou `pull_request` para a branch `main`:
-
-```mermaid
-flowchart LR
-    A["Push na main / PR"] --> B["CI: Setup Python 3.11"]
-    B --> C["CI: Instalação de Dependências"]
-    C --> D["CI: Linter Flake8"]
-    D --> E["CI: Testes Automatizados Pytest"]
-    E -->|Apenas se CI passar & Push na main| F["CD: Build da Imagem Docker"]
-    F --> G["CD: Publicação no GHCR (ghcr.io)"]
-```
-
-1. **Continuous Integration (CI)**:
-   - Configuração do runtime Python 3.11 com cache de dependências.
-   - Instalação dos pacotes via `pip`.
-   - Análise estática e verificação de sintaxe via `flake8`.
-   - Execução da suíte de testes com `pytest -v`.
-2. **Continuous Deployment (CD)**:
-   - Só é executado se todas as etapas da CI forem aprovadas.
-   - Realiza o build multiplataforma da imagem Docker.
-   - Publica a imagem no **GitHub Container Registry (GHCR)**:
-     `ghcr.io/lucas-cayres-porto/obd2:latest`
 
 ---
 
@@ -107,6 +75,9 @@ Acesse a documentação interativa em: [http://localhost:8000/docs](http://local
 ## 🐳 Executando via Docker
 
 ```bash
-# Executando a imagem publicada no GHCR:
-docker run -p 8000:8000 ghcr.io/lucas-cayres-porto/obd2:latest
+# Build da imagem Docker:
+docker build -t obd2-api .
+
+# Execução do contêiner:
+docker run -p 8000:8000 obd2-api
 ```

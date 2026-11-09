@@ -15,7 +15,7 @@ app = FastAPI(
     * **Autenticação**: Validação e login seguro de motoristas.
     * **Veículos**: Consulta de frota vinculada ao motorista.
     * **Telemetria**: Ingestão de dados de motor, RPM, temperaturas, sensores de O2 e níveis de combustível.
-    * **Healthcheck**: Monitoramento contínuo para suporte ao pipeline de CI/CD.
+    * **Healthcheck**: Monitoramento contínuo da integridade e disponibilidade do serviço.
     """,
     docs_url="/docs",
     redoc_url="/redoc",
