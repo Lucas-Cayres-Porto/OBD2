@@ -1,8 +1,10 @@
 import os
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     APP_NAME: str = "OBD2 Telemetria API"
     APP_VERSION: str = "1.0.0"
     APP_ENV: str = "development"
@@ -18,9 +20,6 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         return f"postgresql+psycopg2://{self.USER}:{self.PASSWORDTEST}@{self.HOSTTEST}:{self.PORTTEST}/{self.DATABASETEST}"
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
 
 
 settings = Settings()

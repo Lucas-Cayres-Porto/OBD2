@@ -1,5 +1,7 @@
 # 🚛 OBD2 - Telemetria Veicular & API REST
 
+![CI/CD Pipeline](https://github.com/Lucas-Cayres-Porto/OBD2/actions/workflows/ci-cd.yml/badge.svg)
+
 Sistema moderno de telemetria automotiva via protocolo OBD2 com ingestão de dados em tempo real, desenvolvido em Python e **FastAPI**.
 
 ---
