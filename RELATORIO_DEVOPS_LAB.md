@@ -171,23 +171,20 @@ O roteiro do laboratório estabelece expressamente a possibilidade de utilizar *
 
 A construção da pipeline foi realizada em colaboração direta com a IA Generativa (Antigravity / Gemini), atuando como Arquiteto de Software e Engenheiro DevOps.
 
-### Tabela de Interações com a IA
+### Tabela de Interações Relevantes com a IA
 
 | # | Prompt Utilizado | Resultado Obtido | Alteração / Decisão Realizada |
 |---|------------------|------------------|-------------------------------|
-| **1** | *"eu tenho que fazer a atividade, quero que primeiro você entenda o projeto para /plan como devemos criar isso e o que faz mais sentido para o meu projeto"* | Diagnóstico completo da aplicação FastAPI, testes unitários e definição da arquitetura da pipeline. | Estruturação dos jobs de CI e CD e plano de modernização do Pydantic v2. |
-| **2** | Aprovação do plano de implementação e solicitação de execução | Geração dos arquivos `.flake8` e `.github/workflows/ci-cd.yml`. | Inclusão de sanitização de caixa baixa para o GHCR e permissões nativas de escrita de pacotes. |
-| **3** | Refinamento da configuração do Pydantic e execução dos testes | Atualização de `app/config.py` com `SettingsConfigDict` do Pydantic v2. | Execução de `pytest -v` confirmando 11 testes aprovados com zero avisos. |
-| **4** | *"eu tenho que colocar alguma env ?"* | Esclarecimento sobre o funcionamento nativo do GITHUB_TOKEN e uso de mocks em testes locais. | Confirmação de que nenhuma variável de ambiente ou Secret externa é obrigatória. |
-| **5** | *"sem o render, pode retirar"* | Remoção de webhooks externos da pipeline e do relatório. | Consolidação do CD focado exclusivamente no empacotamento e publicação da imagem Docker no GHCR. |
-| **6** | *"certo, deixe os nomes simples dos processos tbm"* | Padronização e simplificação dos nomes de jobs e etapas no GitHub Actions. | Adoção de nomes diretos como `Checkout`, `Configurar Python`, `Testes Unitarios` e `Login no GHCR`. |
+| **1** | *"quero que primeiro você entenda o projeto para /plan como devemos criar isso e o que faz mais sentido para o meu projeto"* | Diagnóstico completo da aplicação FastAPI, suíte de testes e proposição da arquitetura de automação. | Estruturação dos estágios de CI (lint, testes automatizados e smoke test do Docker) e CD (empacotamento de contêiner no GHCR). |
+| **2** | *"sem o render, pode retirar"* | Eliminação de dependências externas de infraestrutura e simplificação da arquitetura de release. | Foco exclusivo do CD na publicação de contêineres versionados no GitHub Container Registry via GITHUB_TOKEN nativo. |
+| **3** | *"certo, deixe os nomes simples dos processos tbm"* | Otimização da legibilidade visual de toda a pipeline na interface web do GitHub Actions. | Padronização com nomes objetivos para cada etapa: `Checkout`, `Configurar Python`, `Testes Unitarios`, `Login no GHCR`, entre outros. |
 
 ---
 
 ## 5. Respostas às Questões Obrigatórias do LAB
 
 ### 1. Quantos prompts foram necessários para chegar à versão final?
-Foram necessários 6 prompts no total para conduzir o desenvolvimento da pipeline. O ciclo contemplou desde a análise arquitetural inicial e aprovação do plano, passando pela criação dos manifestos e refatoração de avisos de código, até a simplificação das etapas e consolidação do deploy focado exclusivamente em contêineres Docker via GHCR.
+Foram necessários 3 prompts principais para conduzir o desenvolvimento da pipeline. O ciclo contemplou desde a análise arquitetural inicial e planejamento dos jobs, passando pelo refinamento do escopo para deploy focado exclusivamente em contêineres via GHCR, até a padronização e simplificação visual das etapas executadas no GitHub Actions.
 
 ### 2. Quais foram os principais problemas encontrados?
 O principal desafio técnico identificado foi a exigência de caracteres minúsculos no GitHub Container Registry (GHCR), que geraria erro ao publicar imagens a partir de repositórios que possuem letras maiúsculas na URL. Além disso, foram tratados avisos de depreciação do Pydantic v2 na leitura das configurações da aplicação e a necessidade de concessão explícita de permissões de escrita de pacotes no GitHub Actions para viabilizar a publicação automática do contêiner.
