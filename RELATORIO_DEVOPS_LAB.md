@@ -156,20 +156,14 @@ jobs:
 O roteiro do laboratório estabelece expressamente a possibilidade de utilizar **Docker quando o projeto utiliza contêineres** como estratégia de deployment e release:
 
 1. **Adequação Tecnológica**:
-   - O projeto OBD2 possui um `Dockerfile` otimizado (`python:3.11-slim`), com healthcheck e servidor de produção Uvicorn.
-   - Aplicações de telemetria automotiva e IoT são concebidas para distribuição em nós de borda (edge), clusters Kubernetes ou servidores de alta performance, onde a **imagem de contêiner é o artefato final entregável**.
+   O projeto OBD2 possui um `Dockerfile` otimizado (`python:3.11-slim`), com healthcheck e servidor de produção Uvicorn. Aplicações de telemetria automotiva e IoT são concebidas para distribuição em nós de borda (edge), clusters Kubernetes ou servidores de alta performance, onde a **imagem de contêiner é o artefato final entregável**.
 
 2. **Publicação Contínua no GitHub Container Registry (GHCR)**:
-   - A cada push na branch `main`, após o sucesso irrestrito dos testes de CI, o CD gera e publica a nova versão do contêiner em `ghcr.io/lucas-cayres-porto/obd2`.
-   - São geradas simultaneamente duas tags:
-     - `:latest` (versão estável de produção mais recente para consumo imediato);
-     - `:${{ github.sha }}` (rastreabilidade e imutabilidade atrelada ao hash exato do commit).
-   - O processo é 100% autônomo e seguro, utilizando o `GITHUB_TOKEN` nativo com permissão `packages: write`, sem depender de credenciais externas ou serviços adicionais.
-   - Qualquer ambiente com Docker pode baixar e executar a versão mais recente em um único comando:
-     ```bash
-     docker pull ghcr.io/lucas-cayres-porto/obd2:latest
-     docker run -d -p 8000:8000 ghcr.io/lucas-cayres-porto/obd2:latest
-     ```
+   A cada push na branch `main`, após o sucesso irrestrito dos testes de CI, o CD gera e publica a nova versão do contêiner em `ghcr.io/lucas-cayres-porto/obd2`. São geradas simultaneamente duas tags: `:latest` (versão estável de produção mais recente para consumo imediato) e `:${{ github.sha }}` (rastreabilidade e imutabilidade atrelada ao hash exato do commit). O processo é 100% autônomo e seguro, utilizando o `GITHUB_TOKEN` nativo com permissão `packages: write`, sem depender de credenciais externas ou serviços adicionais. Qualquer ambiente com Docker pode baixar e executar a versão mais recente em um único comando:
+   ```bash
+   docker pull ghcr.io/lucas-cayres-porto/obd2:latest
+   docker run -d -p 8000:8000 ghcr.io/lucas-cayres-porto/obd2:latest
+   ```
 
 ---
 
@@ -177,55 +171,35 @@ O roteiro do laboratório estabelece expressamente a possibilidade de utilizar *
 
 A construção da pipeline foi realizada em colaboração direta com a IA Generativa (Antigravity / Gemini), atuando como Arquiteto de Software e Engenheiro DevOps.
 
-### Tabela de Interações e Evolução
+### Tabela de Interações com a IA
 
-| # | Prompt Utilizado | Resultado Obtido | Problema / Desafio Encontrado | Alteração / Decisão Realizada |
-|---|------------------|------------------|-------------------------------|--------------------------------|
-| **1** | *"eu tenho que fazer a atividade, quero que primeiro você entenda o projeto para /plan como devemos criar isso e o que faz mais sentido para o meu projeto"* | A IA realizou a inspeção completa do repositório OBD2 (código FastAPI, rotas, 11 testes unitários, Dockerfile e dependências) e apresentou um plano estruturado de CI/CD. | O projeto continha avisos de depreciação do Pydantic v2 no arquivo `app/config.py` e precisava de uma estratégia clara de CI/CD adequada ao perfil de telemetria. | Aprovado o plano com dois jobs: CI (lint, pytest, docker test) e CD (geração e publicação do contêiner no GHCR), além de modernizar a configuração do Pydantic. |
-| **2** | *Aprovação do plano de implementação e solicitação de execução dos componentes propostos* | Criação do arquivo de configuração `.flake8` e da pipeline `.github/workflows/ci-cd.yml` com validação de dependências e permissões de pacotes. | Nomes de repositórios no GitHub contêm letras maiúsculas (ex: `Lucas-Cayres-Porto/OBD2`), mas o GHCR exige estritamente identificadores em letras minúsculas. | Implementado step de normalização `tr '[:upper:]' '[:lower:]'` no GitHub Actions para evitar erro 400 no push da imagem Docker. |
-| **3** | *Refinamento da configuração do Pydantic e eliminação de warnings na suíte de testes* | Substituição da antiga classe interna `class Config` por `model_config = SettingsConfigDict(...)` em `app/config.py`. | Avisos de depreciação (`PydanticDeprecatedSince20`) poluíam a saída dos testes. | Executado `pytest -v`, confirmando 11 testes aprovados com 0 warnings e execução em ~0.7s. |
-| **4** | *"eu tenho que colocar alguma env ?"* | Esclarecimento de que nenhuma variável de ambiente ou Secret externa é necessária para a execução completa da pipeline, pois os testes utilizam mocks e o `GITHUB_TOKEN` é nativo. | Necessidade de simplificar a arquitetura para evitar dependências externas de infraestrutura. | A IA explicou como as credenciais nativas operam e tirou dúvidas sobre variáveis de ambiente. |
-| **5** | *"sem o render, pode retirar"* | Remoção do webhook de serviço externo e consolidação do CD focado 100% no build, versionamento e publicação do contêiner Docker no GHCR. | Manter a pipeline limpa, autônoma e aderente ao escopo de contêineres do enunciado. | Atualização do `.github/workflows/ci-cd.yml` e sincronização do relatório técnico. |
-| **6** | *"certo, deixe os nomes simples dos processos tbm"* | Simplificação e padronização dos nomes dos jobs e de todas as etapas (steps) da pipeline no GitHub Actions. | Nomes verbosos e com numeração poluíam a visualização visual na interface do GitHub Actions. | Adotados nomes objetivos e diretos: `Checkout`, `Configurar Python`, `Instalar Dependencias`, `Lint (Flake8)`, `Testes Unitarios (Pytest)`, `Build da Imagem Docker`, `Configurar Docker`, `Normalizar Tag da Imagem`, `Login no GHCR`, `Build e Push da Imagem`. |
+| # | Prompt Utilizado | Resultado Obtido | Alteração / Decisão Realizada |
+|---|------------------|------------------|-------------------------------|
+| **1** | *"eu tenho que fazer a atividade, quero que primeiro você entenda o projeto para /plan como devemos criar isso e o que faz mais sentido para o meu projeto"* | Diagnóstico completo da aplicação FastAPI, testes unitários e definição da arquitetura da pipeline. | Estruturação dos jobs de CI e CD e plano de modernização do Pydantic v2. |
+| **2** | Aprovação do plano de implementação e solicitação de execução | Geração dos arquivos `.flake8` e `.github/workflows/ci-cd.yml`. | Inclusão de sanitização de caixa baixa para o GHCR e permissões nativas de escrita de pacotes. |
+| **3** | Refinamento da configuração do Pydantic e execução dos testes | Atualização de `app/config.py` com `SettingsConfigDict` do Pydantic v2. | Execução de `pytest -v` confirmando 11 testes aprovados com zero avisos. |
+| **4** | *"eu tenho que colocar alguma env ?"* | Esclarecimento sobre o funcionamento nativo do GITHUB_TOKEN e uso de mocks em testes locais. | Confirmação de que nenhuma variável de ambiente ou Secret externa é obrigatória. |
+| **5** | *"sem o render, pode retirar"* | Remoção de webhooks externos da pipeline e do relatório. | Consolidação do CD focado exclusivamente no empacotamento e publicação da imagem Docker no GHCR. |
+| **6** | *"certo, deixe os nomes simples dos processos tbm"* | Padronização e simplificação dos nomes de jobs e etapas no GitHub Actions. | Adoção de nomes diretos como `Checkout`, `Configurar Python`, `Testes Unitarios` e `Login no GHCR`. |
 
 ---
 
 ## 5. Respostas às Questões Obrigatórias do LAB
 
 ### 1. Quantos prompts foram necessários para chegar à versão final?
-Foram necessários **6 prompts**, cobrindo:
-1. Exploração arquitetural do projeto e geração do plano técnico com `/plan`;
-2. Aprovação e geração dos arquivos de configuração (`.flake8`, `.github/workflows/ci-cd.yml`);
-3. Refatoração de compatibilidade Pydantic v2 para zerar warnings nos testes;
-4. Dúvida e esclarecimento sobre variáveis de ambiente e secrets;
-5. Ajuste de escopo para foco exclusivo no CD via Docker/GHCR;
-6. Simplificação e padronização visual dos nomes de jobs e steps no GitHub Actions.
+Foram necessários 6 prompts no total para conduzir o desenvolvimento da pipeline. O ciclo contemplou desde a análise arquitetural inicial e aprovação do plano, passando pela criação dos manifestos e refatoração de avisos de código, até a simplificação das etapas e consolidação do deploy focado exclusivamente em contêineres Docker via GHCR.
 
 ### 2. Quais foram os principais problemas encontrados?
-- **Sensibilidade de caixa (Case Sensitivity) no GHCR**: O GitHub Container Registry rejeita nomes de imagem com caracteres maiúsculos. Como o repositório original é `Lucas-Cayres-Porto/OBD2`, uma tentativa direta de push falharia. Isso foi solucionado adicionando uma etapa de sanitização via shell script (`tr '[:upper:]' '[:lower:]'`).
-- **Avisos de depreciação no Pydantic**: O arquivo `app/config.py` utilizava a sintaxe do Pydantic v1 (`class Config:`), gerando avisos durante a execução do `pytest`. Foi refatorado para utilizar `SettingsConfigDict` do Pydantic v2.
-- **Isolamento de permissões do GitHub Actions**: O job de CD requer permissão explícita `packages: write` para publicar no GitHub Packages, o que foi configurado no bloco `permissions` do workflow.
+O principal desafio técnico identificado foi a exigência de caracteres minúsculos no GitHub Container Registry (GHCR), que geraria erro ao publicar imagens a partir de repositórios que possuem letras maiúsculas na URL. Além disso, foram tratados avisos de depreciação do Pydantic v2 na leitura das configurações da aplicação e a necessidade de concessão explícita de permissões de escrita de pacotes no GitHub Actions para viabilizar a publicação automática do contêiner.
 
-### 3. Quais alterações foram necessárias no projeto?
-- Criação do diretório `.github/workflows/` e do arquivo `ci-cd.yml`;
-- Criação do arquivo de configuração `.flake8` para padronizar regras de linters;
-- Atualização do arquivo `app/config.py` com `SettingsConfigDict` (Pydantic v2);
-- Inclusão do badge do GitHub Actions no `README.md`;
-- Criação do documento `RELATORIO_DEVOPS_LAB.md` para subsidiar a entrega acadêmica.
+### 3. Quais alterações foram necessárias?
+No âmbito do repositório, foram criados o fluxo de automação `.github/workflows/ci-cd.yml` e o arquivo de padronização `.flake8`. Na aplicação, atualizou-se o módulo `app/config.py` para adotar a nova convenção de configuração do Pydantic v2, eliminando avisos de execução. Por fim, o arquivo `README.md` recebeu o badge de status da pipeline e elaborou-se este relatório técnico detalhado.
 
 ### 4. Quais alterações foram realizadas manualmente?
-- Definição do repositório no GitHub: `https://github.com/Lucas-Cayres-Porto/OBD2`;
-- Push dos commits e abertura/merge de Pull Request na branch `main` para validação dos gatilhos da pipeline;
-- Exportação deste relatório para formato PDF para submissão no formulário Microsoft Forms.
+As intervenções manuais consistiram na seleção e preparação do repositório no GitHub, na revisão das decisões sugeridas pela IA, no envio dos commits e execução do push para a branch `main`, bem como na conferência visual da aba Actions e da publicação do pacote na interface web do GitHub para composição do arquivo PDF final.
 
 ### 5. Como você verificou que a pipeline estava funcionando corretamente?
-- **Localmente**:
-  - Execução de `python -m pytest -v`, confirmando 11 testes passando com sucesso com 0 avisos.
-  - Verificação de sintaxe e padrões PEP8 com `flake8`.
-- **No GitHub Actions**:
-  - Teste do fluxo de **Pull Request**: disparo automático do job `CI - Integracao Continua` com sucesso, bloqueando a execução do job de CD enquanto não estivesse na `main`.
-  - Teste do fluxo de **Push na `main`**: execução sequencial de `CI -> CD`, validação dos testes, compilação da imagem Docker e publicação no **GitHub Container Registry** (`ghcr.io/lucas-cayres-porto/obd2:latest`).
-  - Verificação da imagem publicada na aba **Packages** do repositório.
+A validação iniciou-se em ambiente local por meio da execução de testes unitários com pytest e inspeção estática com flake8. No ambiente remoto do GitHub Actions, a confirmação ocorreu pelo acompanhamento em tempo real da execução disparada pelo push na branch principal, na qual o job de CI concluiu todas as validações de código e testes em 41 segundos, seguido pelo job de CD que gerou e publicou com sucesso a imagem Docker de produção no GHCR em 52 segundos, finalizando todo o fluxo com status verde.
 
 ---
 
