@@ -1,50 +1,27 @@
-import obd, os, re, sqlalchemy as sqla, pandas as pd, warnings, psycopg2 as psy, logging
+import os
+import re
+import logging
+import warnings
 from datetime import datetime
-from dotenv import load_dotenv
 from time import sleep
+import httpx
+from dotenv import load_dotenv
 import cores as c
 
-# pip install sqlalchemy psycopg2 obd
+try:
+    import obd
+    logging.getLogger("obd.obd").setLevel(logging.CRITICAL)
+except ImportError:
+    obd = None
 
-logging.getLogger("obd.obd").setLevel(logging.CRITICAL)
 warnings.filterwarnings("ignore")
+load_dotenv()
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 
-def conectar():
-    conn = None
-    try:
-        load_dotenv()
-        conn = psy.connect(
-            host=os.getenv('HOSTTEST'),
-            database=os.getenv('DATABASETEST'),
-            user=os.getenv('USER'),
-            password=os.getenv('PASSWORDTEST'),
-            port=int(os.getenv('PORTTEST', 5432)),
-        )
-    except psy.Error as e:
-        print(f"Erro na conexão com banco: {e}")
-    return conn
-
-
-def conectarInsert():
-    conn = None
-    load_dotenv()
-    try:
-        engine = sqla.create_engine(
-            f"postgresql+psycopg2://{os.getenv('USER')}:{os.getenv('PASSWORDTEST')}@{os.getenv('HOSTTEST')}:{os.getenv('PORTTEST', 5432)}/{os.getenv('DATABASETEST')}"
-        )
-        conn = engine.connect()
-    except sqla.Error as e:
-        print(f"Erro na conexão: {e}")
-    return conn
-
-
-def desconectar(conn):
-    if conn is not None:
-        conn.close()
-
-
-def efetuarLogin():
+def efetuarLogin(client: httpx.Client) -> int:
+    """Solicita credenciais do motorista e valida na API FastAPI."""
     c.separador()
     print(f"{c.branco_negrito}Faça o Seu Login{c.reset}".center(70))
     c.separador()
@@ -57,95 +34,173 @@ def efetuarLogin():
             else:
                 print(f"{c.vermelho}Formato de email inválido, digite um válido!{c.reset}")
 
-        senhaDigitada = input("Digite a sua senha: ")
+        senha = input("Digite a sua senha: ")
 
-        conexaoBD = conectar().cursor()
-        conexaoBD.execute("SELECT m.id,m.senha FROM motorista m WHERE m.email=%s", (email,))
-        senhaEsperada = conexaoBD.fetchone()
-        desconectar(conexaoBD)
-
-        if senhaEsperada:
-            if senhaDigitada == senhaEsperada[1]:
-                break
+        try:
+            resposta = client.post(
+                f"{API_BASE_URL}/api/v1/auth/login",
+                json={"email": email, "senha": senha},
+                timeout=10.0,
+            )
+            if resposta.status_code == 200:
+                dados = resposta.json()
+                c.separador()
+                print(f"{c.verde_negrito}Login realizado com sucesso !{c.reset}".center(70))
+                c.separador()
+                return dados["id_motorista"]
+            elif resposta.status_code == 401:
+                print(f"{c.vermelho}Credenciais inválidas: e-mail não cadastrado ou senha incorreta!{c.reset}")
+                c.separador()
             else:
-                while True:
-                    print(f"{c.vermelho}Senha incorreta, digite novamente !{c.reset}")
-                    senhaDigitada = input("Digite a sua senha: ")
-                    if senhaDigitada == senhaEsperada[1]:
-                        break
-                break
-        else:
-            print(f"{c.vermelho}Email não cadastrado !{c.reset}")
-            c.separador()
-
-    c.separador()
-    print(f"{c.verde_negrito}Login realizado com sucesso !{c.reset}".center(70))
-    return senhaEsperada[0]
+                print(f"{c.vermelho}Erro na autenticação ({resposta.status_code}): {resposta.text}{c.reset}")
+                c.separador()
+        except httpx.ConnectError:
+            print(f"{c.vermelho}Não foi possível conectar à API em {API_BASE_URL}. Verifique se o servidor está ativo!{c.reset}")
+        except Exception as e:
+            print(f"{c.vermelho}Erro ao comunicar com a API: {e}{c.reset}")
 
 
-def escolherVeiculo(idMotorista):
-    conexaoBD = conectar()
-    caminhoes = pd.read_sql_query(
-        f"select c.id ,c.placa, c.modelo from caminhao_motorista cm join caminhao c on c.id = cm.id_caminhao where cm.id_motorista = {idMotorista}",
-        conexaoBD
-    )
-    desconectar(conexaoBD)
+def escolherVeiculo(id_motorista: int, client: httpx.Client) -> int:
+    """Consulta veículos vinculados ao motorista via API FastAPI e permite seleção."""
+    try:
+        resposta = client.get(
+            f"{API_BASE_URL}/api/v1/veiculos/{id_motorista}",
+            timeout=10.0,
+        )
+        resposta.raise_for_status()
+        dados = resposta.json()
+        veiculos = dados.get("veiculos", [])
+    except Exception as e:
+        print(f"{c.vermelho}Erro ao consultar veículos na API: {e}{c.reset}")
+        return 1
+
+    if not veiculos:
+        print(f"{c.vermelho}Nenhum veículo vinculado a este motorista!{c.reset}")
+        return 1
 
     c.separador()
     print(f"{c.branco_negrito}Veículos Disponíveis{c.reset}".center(70))
-    for i in range(caminhoes.shape[0]):
-        print(f"{c.branco_negrito}{i+1}{c.reset} - Placa: {c.amarelo}{caminhoes.loc[i, 'placa']}{c.reset}, Modelo: {c.amarelo}{caminhoes.loc[i, 'modelo']}{c.reset}")
+    for i, veiculo in enumerate(veiculos):
+        print(
+            f"{c.branco_negrito}{i+1}{c.reset} - "
+            f"Placa: {c.amarelo}{veiculo['placa']}{c.reset}, "
+            f"Modelo: {c.amarelo}{veiculo['modelo']}{c.reset}"
+        )
 
     while True:
-        escolha = int(input("Escolha um dos veículos: "))
-        if escolha < 1 or escolha > caminhoes.shape[0]:
-            print(f"{c.vermelho}Escolha um número entre 1 e {caminhoes.shape[0]}{c.reset}")
-        else:
-            break
+        try:
+            escolha = int(input("Escolha um dos veículos: "))
+            if 1 <= escolha <= len(veiculos):
+                break
+            print(f"{c.vermelho}Escolha um número entre 1 e {len(veiculos)}{c.reset}")
+        except ValueError:
+            print(f"{c.vermelho}Digite um número válido!{c.reset}")
+
     c.separador()
     print(f"{c.verde_negrito}Veículo escolhido com sucesso !{c.reset}".center(70))
     c.separador()
-    return caminhoes.loc[escolha-1, "id"]
+    return veiculos[escolha - 1]["id"]
 
 
-def main():
-    idMotorista = efetuarLogin()
-    idCaminhao = escolherVeiculo(idMotorista)
+def extrair_valor(query_result, default: float = -1.0) -> float:
+    """Extrai valor numérico seguro de uma leitura OBD."""
+    if query_result is None or query_result.is_null():
+        return default
+    try:
+        val = query_result.value
+        return float(val.magnitude) if hasattr(val, "magnitude") else float(val)
+    except (AttributeError, ValueError, TypeError):
+        return default
 
-    c.separador()
-    print(f"{c.branco_negrito}Iniciando Coleta de Dados{c.reset}".center(70))
 
-    for i in range(10):
-        sleep(10)
-        conexaoOBD = obd.OBD()
+def coletar_e_enviar(id_caminhao: int, conexao_obd, client: httpx.Client) -> bool:
+    """Lê os sensores do scanner OBD e envia o payload para o endpoint de telemetria da API."""
+    if obd and conexao_obd is not None and getattr(conexao_obd, "is_connected", lambda: False)():
+        temp_ar = extrair_valor(conexao_obd.query(obd.commands.INTAKE_TEMP))
+        raw_throttle = extrair_valor(conexao_obd.query(obd.commands.THROTTLE_POS), default=0.0)
+        pos_acelerador = max(0.0, min(100.0, raw_throttle))
+        run_time_query = conexao_obd.query(obd.commands.RUN_TIME)
+        tempo_motor = "00:00" if run_time_query.is_null() else str(run_time_query.value)
+        carga_motor = extrair_valor(conexao_obd.query(obd.commands.ENGINE_LOAD))
+        rpm = extrair_valor(conexao_obd.query(obd.commands.RPM))
+        o2_sensor = extrair_valor(conexao_obd.query(obd.commands.O2_B1S1))
+        combustivel = extrair_valor(conexao_obd.query(obd.commands.FUEL_LEVEL))
+        temp_arrefecimento = extrair_valor(conexao_obd.query(obd.commands.COOLANT_TEMP))
+        pressao_coletor = extrair_valor(conexao_obd.query(obd.commands.INTAKE_PRESSURE))
+    else:
+        temp_ar = -1.0
+        pos_acelerador = 0.0
+        tempo_motor = "00:00"
+        carga_motor = -1.0
+        rpm = -1.0
+        o2_sensor = -1.0
+        combustivel = -1.0
+        temp_arrefecimento = -1.0
+        pressao_coletor = -1.0
 
-        dt = pd.DataFrame([{
-            'temp_ar_admissao': -1 if conexaoOBD.query(obd.commands.INTAKE_TEMP).is_null() else conexaoOBD.query(obd.commands.INTAKE_TEMP).value.magnitude,
-            'posicao_acelerador': -1 if conexaoOBD.query(obd.commands.THROTTLE_POS).is_null() else conexaoOBD.query(obd.commands.THROTTLE_POS).value.magnitude,
-            'tempo_motor_ligado': "00:00" if conexaoOBD.query(obd.commands.RUN_TIME).is_null() else conexaoOBD.query(obd.commands.RUN_TIME).value.magnitude,
-            'carga_motor': -1 if conexaoOBD.query(obd.commands.ENGINE_LOAD).is_null() else conexaoOBD.query(obd.commands.ENGINE_LOAD).value.magnitude,
-            'rpm_motor': -1 if conexaoOBD.query(obd.commands.RPM).is_null() else conexaoOBD.query(obd.commands.RPM).value.magnitude,
-            'dt_hora_leitura': datetime.now(),
-            'pressao_pneu': -1,
-            'sensores_oxigenio': -1 if conexaoOBD.query(obd.commands.O2_B1S1).is_null() else conexaoOBD.query(obd.commands.O2_B1S1).value.magnitude,
-            'qtd_combustivel': -1 if conexaoOBD.query(obd.commands.FUEL_LEVEL).is_null() else conexaoOBD.query(obd.commands.FUEL_LEVEL).value.magnitude,
-            'temp_arrefecimento': -1 if conexaoOBD.query(obd.commands.COOLANT_TEMP).is_null() else conexaoOBD.query(obd.commands.COOLANT_TEMP).value.magnitude,
-            'pressao_coletor_admissao': -1 if conexaoOBD.query(obd.commands.INTAKE_PRESSURE).is_null() else conexaoOBD.query(obd.commands.INTAKE_PRESSURE).value.magnitude,
-            'id_caminhao': idCaminhao
-        }])
+    payload = {
+        "id_caminhao": id_caminhao,
+        "temp_ar_admissao": temp_ar,
+        "posicao_acelerador": pos_acelerador,
+        "tempo_motor_ligado": tempo_motor,
+        "carga_motor": carga_motor,
+        "rpm_motor": rpm,
+        "dt_hora_leitura": datetime.now().isoformat(),
+        "pressao_pneu": -1.0,
+        "sensores_oxigenio": o2_sensor,
+        "qtd_combustivel": combustivel,
+        "temp_arrefecimento": temp_arrefecimento,
+        "pressao_coletor_admissao": pressao_coletor,
+    }
 
-        conexaoOBD.close()
+    try:
+        resposta = client.post(
+            f"{API_BASE_URL}/api/v1/telemetria",
+            json=payload,
+            timeout=10.0,
+        )
+        if resposta.status_code == 201:
+            return True
+        else:
+            print(f"{c.vermelho}Erro ao registrar telemetria ({resposta.status_code}): {resposta.text}{c.reset}")
+            return False
+    except httpx.ConnectError:
+        print(f"{c.vermelho}[Offline] Falha ao conectar à API em {API_BASE_URL}. Verifique a conexão.{c.reset}")
+        return False
+    except Exception as e:
+        print(f"{c.vermelho}Erro no envio da telemetria: {e}{c.reset}")
+        return False
 
-        conexaoDB = conectarInsert()
-        if conexaoDB is not None:
-            dt.to_sql("informacoes", conexaoDB, if_exists='append', index=False)
-            desconectar(conexaoDB)
 
-        print(f"{c.ciano}Coleta de Dados: {i+1}/10{c.reset}")
+def main(total_leituras: int = 10, intervalo_segundos: int = 10):
+    with httpx.Client() as client:
+        id_motorista = efetuarLogin(client)
+        id_caminhao = escolherVeiculo(id_motorista, client)
 
-    c.separador()
-    print(f"{c.verde_negrito}Coleta de Dados Realizada com Sucesso{c.reset}".center(70))
-    c.separador()
+        c.separador()
+        print(f"{c.branco_negrito}Iniciando Coleta de Dados OBD2{c.reset}".center(70))
+
+        conexao_obd = None
+        if obd:
+            try:
+                conexao_obd = obd.OBD()
+                if not conexao_obd.is_connected():
+                    print(f"{c.amarelo}Aviso: Scanner OBD2 não detectado. Operando em modo de leitura padrão.{c.reset}")
+            except Exception as e:
+                print(f"{c.amarelo}Aviso: Não foi possível conectar ao scanner OBD2 ({e}). Modo padrão ativo.{c.reset}")
+
+        for i in range(total_leituras):
+            sleep(intervalo_segundos)
+            sucesso = coletar_e_enviar(id_caminhao, conexao_obd, client)
+            status_msg = f"{c.verde}Sucesso{c.reset}" if sucesso else f"{c.vermelho}Falha{c.reset}"
+            print(f"{c.ciano}Coleta de Dados: {i+1}/{total_leituras} -> {status_msg}")
+
+        if conexao_obd and hasattr(conexao_obd, "close"):
+            conexao_obd.close()
+
+        c.separador()
+        print(f"{c.verde_negrito}Ciclo de Coleta Realizado com Sucesso{c.reset}".center(70))
+        c.separador()
 
 
 if __name__ == "__main__":

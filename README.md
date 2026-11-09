@@ -33,11 +33,12 @@ OBD2/
 │   ├── test_health.py     # Testes de status e healthcheck
 │   ├── test_auth.py       # Testes de validação de login e e-mail
 │   ├── test_telemetria.py # Testes de payload de telemetria
+│   ├── test_coletor.py    # Testes unitários do cliente coletor OBD2
 │   └── test_cores.py      # Testes do utilitário de cores ANSI
 ├── Dockerfile             # Imagem de contêiner da aplicação
 ├── .dockerignore
 ├── requirements.txt       # Dependências da aplicação
-├── coletaDadosOBD2.py     # Script legado de leitura OBD2
+├── coletaDadosOBD2.py     # Script coletor OBD2 (Edge Client HTTP)
 └── cores.py               # Utilitário de formatação de console
 ```
 
@@ -71,6 +72,11 @@ pytest -v
 uvicorn app.main:app --reload --port 8000
 ```
 Acesse a documentação interativa em: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 5. Executar o coletor OBD2 (Cliente Embarcado)
+```bash
+python coletaDadosOBD2.py
+```
 
 ---
 
