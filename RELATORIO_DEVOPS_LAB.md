@@ -193,10 +193,10 @@ O primeiro problema foi que o GitHub não aceitava letras maiúsculas na hora de
 Foi preciso criar o arquivo que ensina o GitHub a fazer os testes e a publicação sozinho, além de um arquivo com regras para conferir se o código estava bem escrito. Também fizemos uma pequena correção no código do projeto para modernizar uma configuração antiga e adicionamos um resumo explicativo no projeto.
 
 ### 4. Quais alterações foram realizadas manualmente?
-As únicas ações manuais foram escolher o repositório, avaliar as sugestões da IA, enviar os arquivos pelo computador e abrir uma proposta de alteração através da Pull Request #1 (https://github.com/Lucas-Cayres-Porto/OBD2/pull/1) para testar o fluxo antes de juntar tudo na versão definitiva.
+As ações manuais foram escolher o repositório, avaliar as sugestões da IA e enviar os arquivos pelo computador. Além disso, fiz totalmente na mão a criação e aprovação da Pull Request #1 (https://github.com/Lucas-Cayres-Porto/OBD2/pull/1) para testar se a automação rodava os testes antes de juntar as alterações na versão definitiva.
 
 ### 5. Como você verificou que a pipeline estava funcionando corretamente?
-Primeiro, testei o projeto no meu próprio computador para ter certeza de que tudo funcionava. Depois, abri a Pull Request #1 (https://github.com/Lucas-Cayres-Porto/OBD2/pull/1) no GitHub para conferir se a automação fazia todos os testes sozinha antes de aceitar a mudança. Por fim, ao aprovar e juntar na versão principal, vi pela tela do GitHub que todas as etapas passaram com sucesso, ficando com o símbolo verde de aprovação e gerando a versão final do sistema.
+Primeiro, testei o projeto no meu próprio computador para ter certeza de que tudo funcionava. Depois, com a Pull Request #1 (https://github.com/Lucas-Cayres-Porto/OBD2/pull/1) que fiz na mão, conferi se a automação realizava todos os testes sozinha antes de permitir a junção do código. Por fim, ao aprovar e juntar na versão principal, vi pela tela do GitHub que todas as etapas passaram com sucesso, ficando com o símbolo verde de aprovação e gerando a versão final do sistema.
 
 ---
 
