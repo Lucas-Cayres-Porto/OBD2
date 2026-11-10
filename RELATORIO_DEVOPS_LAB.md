@@ -184,19 +184,19 @@ A construção da pipeline foi realizada em colaboração direta com a IA Genera
 ## 5. Respostas às Questões Obrigatórias do LAB
 
 ### 1. Quantos prompts foram necessários para chegar à versão final?
-Foram necessários 3 prompts principais para conduzir o desenvolvimento da pipeline. O ciclo contemplou desde a análise arquitetural inicial e planejamento dos jobs, passando pelo refinamento do escopo para deploy focado exclusivamente em contêineres via GHCR, até a padronização e simplificação visual das etapas executadas no GitHub Actions.
+Foram necessários 3 prompts no total. No primeiro, pedi ajuda para a inteligência artificial entender o projeto e montar o plano inicial; no segundo, pedi para simplificar o processo e retirar ferramentas externas; e no terceiro, pedi para organizar e deixar os nomes de cada etapa bem simples e fáceis de entender.
 
 ### 2. Quais foram os principais problemas encontrados?
-O principal desafio técnico identificado foi a exigência de caracteres minúsculos no GitHub Container Registry (GHCR), que geraria erro ao publicar imagens a partir de repositórios que possuem letras maiúsculas na URL. Além disso, foram tratados avisos de depreciação do Pydantic v2 na leitura das configurações da aplicação e a necessidade de concessão explícita de permissões de escrita de pacotes no GitHub Actions para viabilizar a publicação automática do contêiner.
+O primeiro problema foi que o GitHub não aceitava letras maiúsculas na hora de registrar a versão do projeto, então foi preciso fazer um ajuste para converter tudo em letras minúsculas automaticamente. Além disso, o código do projeto mostrava alguns avisos antigos de configuração que precisavam ser atualizados para não atrapalhar a execução.
 
 ### 3. Quais alterações foram necessárias?
-No âmbito do repositório, foram criados o fluxo de automação `.github/workflows/ci-cd.yml` e o arquivo de padronização `.flake8`. Na aplicação, atualizou-se o módulo `app/config.py` para adotar a nova convenção de configuração do Pydantic v2, eliminando avisos de execução. Por fim, o arquivo `README.md` recebeu o badge de status da pipeline e elaborou-se este relatório técnico detalhado.
+Foi preciso criar o arquivo que ensina o GitHub a fazer os testes e a publicação sozinho, além de um arquivo com regras para conferir se o código estava bem escrito. Também fizemos uma pequena correção no código do projeto para modernizar uma configuração antiga e adicionamos um resumo explicativo no projeto.
 
 ### 4. Quais alterações foram realizadas manualmente?
-As intervenções manuais consistiram na seleção e preparação do repositório no GitHub, na revisão das decisões sugeridas pela IA, no envio dos commits e execução do push para a branch `main`, bem como na conferência visual da aba Actions e da publicação do pacote na interface web do GitHub para composição do arquivo PDF final.
+As únicas ações manuais foram escolher o repositório, avaliar as sugestões da IA, enviar os arquivos pelo computador e abrir uma proposta de alteração através da Pull Request #1 (https://github.com/Lucas-Cayres-Porto/OBD2/pull/1) para testar o fluxo antes de juntar tudo na versão definitiva.
 
 ### 5. Como você verificou que a pipeline estava funcionando corretamente?
-A validação iniciou-se em ambiente local por meio da execução de testes unitários com pytest e inspeção estática com flake8. No ambiente remoto do GitHub Actions, a confirmação ocorreu pelo acompanhamento em tempo real da execução disparada pelo push na branch principal, na qual o job de CI concluiu todas as validações de código e testes em 41 segundos, seguido pelo job de CD que gerou e publicou com sucesso a imagem Docker de produção no GHCR em 52 segundos, finalizando todo o fluxo com status verde.
+Primeiro, testei o projeto no meu próprio computador para ter certeza de que tudo funcionava. Depois, abri a Pull Request #1 (https://github.com/Lucas-Cayres-Porto/OBD2/pull/1) no GitHub para conferir se a automação fazia todos os testes sozinha antes de aceitar a mudança. Por fim, ao aprovar e juntar na versão principal, vi pela tela do GitHub que todas as etapas passaram com sucesso, ficando com o símbolo verde de aprovação e gerando a versão final do sistema.
 
 ---
 
@@ -205,9 +205,9 @@ A validação iniciou-se em ambiente local por meio da execução de testes unit
 > [!TIP]
 > **Orientações para o envio do PDF:**
 > Cole abaixo as capturas de tela do seu repositório no GitHub para comprovar a execução bem-sucedida da pipeline antes de gerar o PDF final:
-> 1. Print da aba **Actions** mostrando os jobs de CI e CD verdes (✅);
-> 2. Print do **Pull Request** mostrando os checks de CI aprovados;
-> 3. Print da página de **Packages** no GitHub (`ghcr.io/lucas-cayres-porto/obd2`) com a imagem publicada.
+> 1. Print da aba **Actions** mostrando os jobs de CI e CD verdes (✅): https://github.com/Lucas-Cayres-Porto/OBD2/actions/runs/42641244542
+> 2. Print do **Pull Request #1** mostrando os testes aprovados antes do merge: https://github.com/Lucas-Cayres-Porto/OBD2/pull/1
+> 3. Print da página de **Packages** no GitHub com o contêiner publicado: https://github.com/users/Lucas-Cayres-Porto/packages
 
 ### Comando para Testar a Imagem Publicada pelo CD:
 ```bash
